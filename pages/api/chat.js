@@ -1,25 +1,27 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const backend = process.env.BACKEND_URL; // ex: https://lianai-v1.fly.dev
-  if (!backend) return res.status(500).json({ error: "BACKEND_URL missing" });
+  const { profile_id, message, session_id } = req.body || {};
+  if (!profile_id || !message) return res.status(400).json({ error: "Missing profile_id or message" });
+
+  const backend = process.env.BACKEND_URL || "https://lianai-v1.fly.dev";
 
   try {
     const r = await fetch(`${backend}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify({ profile_id, message, session_id }),
     });
 
     const text = await r.text();
-    // parfois le backend renvoie HTML si erreur → on protège
-    try {
-      const json = JSON.parse(text);
-      return res.status(r.status).json(json);
-    } catch {
-      return res.status(500).json({ error: "Backend returned non-JSON", raw: text.slice(0, 300) });
+    let data = null;
+    try { data = JSON.parse(text); } catch (e) {}
+
+    if (!r.ok) {
+      return res.status(500).json({ error: "Backend error", status: r.status, body: text });
     }
+    return res.status(200).json(data || { reply: "Erreur: réponse backend non JSON." });
   } catch (e) {
-    return res.status(500).json({ error: "Proxy error", details: String(e) });
+    return res.status(500).json({ error: "Proxy failed", details: String(e) });
   }
 }
