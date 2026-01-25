@@ -1,5 +1,5 @@
 {
-  "name": "lianai-demo-v1",
+  "name": "lianai-demo",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,3 +12,4 @@
     "react-dom": "18.2.0"
   }
 }
+
