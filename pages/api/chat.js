@@ -1,36 +1,32 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Only POST allowed" });
 
-  const { profile_id, message, session_id } = req.body || {};
-  if (!profile_id || !message) {
-    return res.status(400).json({ error: "Missing profile_id or message" });
-  }
+  // On force l'URL SANS le /chat à la fin pour voir si ton app Fly.io accepte la route racine d'abord
+  const FLY_URL = "https://lianai-v1.fly.dev/chat";
 
-  const backend = process.env.BACKEND_URL || "https://lianai-v1.fly.dev";
+  console.log("Appel du backend Fly.io à l'adresse:", FLY_URL);
 
   try {
-    const r = await fetch(`${backend}/chat`, {
+    const response = await fetch(FLY_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id, message, session_id })
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(req.body),
     });
 
-    const text = await r.text();
-    let data = null;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      return res.status(502).json({ error: "Backend did not return JSON", raw: text });
+    if (!response.ok) {
+      const status = response.status;
+      console.error(`Fly.io a répondu avec une erreur: ${status}`);
+      return res.status(status).json({ error: `Fly.io error ${status}` });
     }
 
-    if (!r.ok) {
-      return res.status(r.status).json({ error: "Backend error", data });
-    }
-
+    const data = await response.json();
     return res.status(200).json(data);
-  } catch (e) {
-    return res.status(500).json({ error: "Fetch failed", details: String(e) });
+
+  } catch (error) {
+    console.error("Erreur fatale Bridge Vercel:", error.message);
+    return res.status(502).json({ error: "Impossible de joindre Fly.io", details: error.message });
   }
 }
