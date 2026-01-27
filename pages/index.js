@@ -1,154 +1,102 @@
 import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
-  const [sessionId, setSessionId] = useState(null);
+  const [session_id, setSessionId] = useState(null);
   const [text, setText] = useState("");
+  
+  // ICI : Le nouveau message d'accueil Bilingue
   const [messages, setMessages] = useState([
-    {
-      who: "bot",
-      text: "Hello! Hola! Bonjour! 🙂 Comment puis-je aider ?"
-    }
+    { who: "bot", text: "¡Hola! Welcome to Chirincana Ibiza 🌞\nHow can I help you regarding our menu or reservations? 🍹" },
   ]);
 
   const chatRef = useRef(null);
-
-  // 👇 Change ici si tu veux tester un autre client
-  const profile_id = "chirincana";
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
 
-  function add(who, t) {
-    setMessages((m) => [...m, { who, text: t }]);
-  }
-
   async function sendMessage() {
     const t = text.trim();
     if (!t) return;
+
+    // 1. On affiche le message de l'utilisateur tout de suite
+    const userMsg = { who: "me", text: t };
+    // IMPORTANT : On crée la nouvelle liste d'historique complète
+    const newHistory = [...messages, userMsg];
+    
+    setMessages(newHistory);
     setText("");
-    add("me", t);
 
     try {
-      const r = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          profile_id,
+          profile_id: "chirincana",
           message: t,
-          session_id: sessionId
-        })
+          history: newHistory, // On envoie bien TOUTE la conversation
+          session_id: session_id
+        }),
       });
 
-      const data = await r.json().catch(() => ({}));
+      if (!response.ok) throw new Error('Network response was not ok');
 
-      if (!r.ok) {
-        add("bot", "Erreur serveur. Regarde les logs Vercel.");
-        return;
-      }
-
+      const data = await response.json();
       if (data.session_id) setSessionId(data.session_id);
-      add("bot", data.reply || "Pas de réponse.");
+      
+      if (data.reply) {
+        setMessages((prev) => [...prev, { who: "bot", text: data.reply }]);
+      }
     } catch (e) {
-      add("bot", "Erreur réseau (impossible de joindre le backend).");
+      setMessages((prev) => [...prev, { who: "bot", text: "Connection error... 🌊 Please try again." }]);
     }
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h2 style={{ margin: 0 }}>Lianai – Demo</h2>
-        <small style={{ color: "#666" }}>
-          Test client (multi-langues). Tape: “hello / hola / bonjour”.
-        </small>
-
-        <div ref={chatRef} style={styles.chat}>
+    <div style={{ fontFamily: "'Helvetica Neue', sans-serif", background: "#fafafa", minHeight: "100vh", padding: "20px" }}>
+      <div style={{ maxWidth: "600px", margin: "0 auto", background: "white", borderRadius: "20px", padding: "20px", boxShadow: "0 10px 30px rgba(0,0,0,0.08)" }}>
+        
+        {/* LE NOUVEAU TITRE */}
+        <h2 style={{ textAlign: "center", color: "#222", margin: "0 0 5px 0", textTransform: "uppercase", letterSpacing: "1px" }}>
+          Chirincana Ibiza
+        </h2>
+        <p style={{ textAlign: "center", fontSize: "12px", color: "#ffa500", fontWeight: "bold", marginBottom: "20px", letterSpacing: "2px" }}>
+          BEACH VIBES & FOOD 🌊
+        </p>
+        
+        <div ref={chatRef} style={{ height: "500px", overflowY: "auto", border: "1px solid #eee", padding: "20px", marginBottom: "20px", borderRadius: "15px", background: "#fff" }}>
           {messages.map((m, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                justifyContent: m.who === "me" ? "flex-end" : "flex-start",
-                margin: "10px 0"
-              }}
-            >
-              <div
-                style={{
-                  ...styles.bubble,
-                  background: m.who === "me" ? "#dff1ff" : "#fff"
-                }}
-              >
+            <div key={i} style={{ display: "flex", justifyContent: m.who === "me" ? "flex-end" : "flex-start", marginBottom: "15px" }}>
+              <div style={{ 
+                background: m.who === "me" ? "#222" : "#f1f1f1", 
+                color: m.who === "me" ? "white" : "#333", 
+                padding: "12px 18px", 
+                borderRadius: "20px",
+                borderBottomRightRadius: m.who === "me" ? "4px" : "20px",
+                borderBottomLeftRadius: m.who === "bot" ? "4px" : "20px",
+                maxWidth: "80%",
+                lineHeight: "1.5",
+                fontSize: "15px"
+              }}>
                 {m.text}
               </div>
             </div>
           ))}
         </div>
 
-        <div style={styles.bar}>
-          <input
+        <div style={{ display: "flex", gap: "10px" }}>
+          <input 
+            style={{ flex: 1, padding: "15px", borderRadius: "30px", border: "1px solid #ddd", outline: "none", fontSize: "16px", paddingLeft: "20px" }}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Écrire un message…"
-            style={styles.input}
+            placeholder="Type your message..."
           />
-          <button onClick={sendMessage} style={styles.button}>
-            Envoyer
+          <button onClick={sendMessage} style={{ padding: "0 25px", background: "#ffa500", color: "#fff", border: "none", borderRadius: "30px", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }}>
+            SEND
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    fontFamily: "system-ui, -apple-system, Arial",
-    background: "#f6f6f6",
-    minHeight: "100vh",
-    padding: 16
-  },
-  card: {
-    maxWidth: 720,
-    margin: "0 auto",
-    background: "white",
-    borderRadius: 12,
-    padding: 16,
-    boxShadow: "0 2px 10px rgba(0,0,0,.06)"
-  },
-  chat: {
-    height: "55vh",
-    overflow: "auto",
-    border: "1px solid #eee",
-    borderRadius: 10,
-    padding: 12,
-    background: "#fafafa",
-    marginTop: 12
-  },
-  bubble: {
-    maxWidth: "80%",
-    padding: "10px 12px",
-    borderRadius: 14,
-    lineHeight: 1.3,
-    border: "1px solid #eee"
-  },
-  bar: {
-    display: "flex",
-    gap: 8,
-    marginTop: 12
-  },
-  input: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 10,
-    border: "1px solid #ddd"
-  },
-  button: {
-    padding: "12px 14px",
-    borderRadius: 10,
-    border: 0,
-    background: "#111",
-    color: "#fff",
-    cursor: "pointer"
-  }
-};
