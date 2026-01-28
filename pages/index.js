@@ -7,28 +7,29 @@ const CLIENTS = {
     title: "Chirincana Ibiza",
     subtitle: "BEACH VIBES & FOOD 🌊",
     welcome: "¡Hola! Welcome to Chirincana Ibiza 🌞\nHow can I help you regarding our menu or reservations? 🍹",
-    color: "#000000", // Noir
-    highlight: "#ffa500" // Orange pour le gras
+    color: "#000000",
+    highlight: "#ffa500" // Orange
   },
   camping: {
     title: "Camping La Playa",
     subtitle: "NATURE & RELAX 🏕️",
     welcome: "Bonjour ! Bienvenue au Camping La Playa. 🌲\nCherchez-vous un emplacement pour Van, une Tente ou un Bungalow ?",
-    color: "#2E8B57", // Vert Forêt
-    highlight: "#2E8B57" // Vert pour le gras
+    color: "#2E8B57",
+    highlight: "#2E8B57" // Vert
   },
   demo: {
     title: "Lianai AI",
     subtitle: "ASSISTANT INTELLIGENT 🤖",
-    welcome: "Bonjour ! Je suis la démo Lianai. Je peux être un Resto ou un Camping. Dites-moi qui je suis.",
-    color: "#007AFF", // Bleu
+    welcome: "Bonjour ! Je suis Lianai. 🤖\nJe suis une IA capable de gérer les réservations de Restaurant ou de conseiller des Vacanciers.\n\nEssayez de me demander : 'Comment ça marche ?'",
+    color: "#007AFF", // Bleu Tech
     highlight: "#007AFF"
   }
 };
 
 export default function Home() {
-  const [profileId, setProfileId] = useState("camping"); // <--- ICI : J'ai mis "camping" par défaut pour ton test !
-  const [theme, setTheme] = useState(CLIENTS.camping);
+  // PAR DÉFAUT : On met "demo" (Lianai) et pas "camping"
+  const [profileId, setProfileId] = useState("demo"); 
+  const [theme, setTheme] = useState(CLIENTS.demo);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -40,14 +41,16 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id"); 
 
-    // Si y'a un ID dans l'URL, on le prend. Sinon on garde le défaut ("camping" pour le test)
+    // Si ID trouvé dans l'URL et qu'il existe dans notre liste -> On charge le Client
     if (id && CLIENTS[id]) {
       setProfileId(id);
       setTheme(CLIENTS[id]);
       setMessages([{ who: "bot", text: CLIENTS[id].welcome }]);
     } else {
-      // Si pas d'ID, on charge le défaut configuré en haut (Camping)
-      setMessages([{ who: "bot", text: CLIENTS.camping.welcome }]);
+      // Sinon (URL vide) -> On charge la DÉMO LIANAI
+      setProfileId("demo");
+      setTheme(CLIENTS.demo);
+      setMessages([{ who: "bot", text: CLIENTS.demo.welcome }]);
     }
   }, []);
 
@@ -56,17 +59,13 @@ export default function Home() {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, loading]);
 
-  // --- LE MOTEUR DE DESIGN (C'est ici qu'on enlève les **) ---
+  // --- LE MOTEUR DE DESIGN ---
   const formatMessage = (txt, highlightColor) => {
     if (!txt) return "";
     let formatted = txt
-      // 1. Sauts de ligne
       .replace(/\n/g, '<br/>') 
-      // 2. Gras (**mot**) -> devient coloré et gras
       .replace(/\*\*([^*]+)\*\*/g, `<b style="color: ${highlightColor}; font-weight: 800;">$1</b>`) 
-      // 3. Liens [Texte](URL) -> devient un joli lien bleu
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #007AFF; text-decoration: underline; font-weight: bold;">$1</a>')
-      // 4. Listes (- item)
       .replace(/^- /gm, '• ');
     
     return formatted;
@@ -86,7 +85,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          profile_id: profileId, 
+          profile_id: profileId, // Envoie "demo", "camping" ou "chirincana"
           message: t,
           history: newHistory
         }),
@@ -144,7 +143,6 @@ export default function Home() {
                     fontSize: "15px",
                     boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                   }}
-                  // C'EST ICI LA MAGIE DU FORMATAGE
                   dangerouslySetInnerHTML={{ __html: m.who === "me" ? m.text : formatMessage(m.text, theme.highlight) }}
                 />
               </div>
