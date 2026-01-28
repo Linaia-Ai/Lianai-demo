@@ -1,32 +1,30 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Only POST allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
 
-  // On force l'URL SANS le /chat à la fin pour voir si ton app Fly.io accepte la route racine d'abord
-  const FLY_URL = "https://lianai-v1.fly.dev/chat";
-
-  console.log("Appel du backend Fly.io à l'adresse:", FLY_URL);
+  const { message, history, profile_id } = req.body;
 
   try {
-    const response = await fetch(FLY_URL, {
+    // ON ENVOIE AU CERVEAU PYTHON (Fly.io)
+    // ⚠️ Assure-toi que ce lien est le bon !
+    const response = await fetch("https://lianai-v1.fly.dev/chat", {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify({
+        text: message,
+        history: history,
+        profile_id: profile_id || "demo" // Si pas d'ID, on met demo
+      }),
     });
 
-    if (!response.ok) {
-      const status = response.status;
-      console.error(`Fly.io a répondu avec une erreur: ${status}`);
-      return res.status(status).json({ error: `Fly.io error ${status}` });
-    }
-
     const data = await response.json();
-    return res.status(200).json(data);
+    res.status(200).json(data);
 
   } catch (error) {
-    console.error("Erreur fatale Bridge Vercel:", error.message);
-    return res.status(502).json({ error: "Impossible de joindre Fly.io", details: error.message });
+    console.error("Erreur API:", error);
+    res.status(500).json({ reply: "Désolé, je ne peux pas répondre pour l'instant (Erreur Serveur)." });
   }
 }
